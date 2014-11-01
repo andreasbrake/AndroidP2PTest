@@ -2,15 +2,26 @@ package com.example.p2ptest;
 
 import android.app.Activity;
 import android.os.Bundle;
+import android.os.Handler;
+import android.provider.Settings.Secure;
 import android.view.Menu;
 import android.view.MenuItem;
+import android.widget.TextView;
 
 public class MainActivity extends Activity {
-
+	
+	private TextView status;
+	
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
-		super.onCreate(savedInstanceState);
-		setContentView(R.layout.activity_main);
+		 super.onCreate(savedInstanceState);
+	        setContentView(R.layout.activity_main);
+	        
+	        status = (TextView) findViewById(R.id.lbl_status);
+	    
+	        String androidId = Secure.getString(this.getContentResolver(), Secure.ANDROID_ID);
+	        status.setText(status.getText() + "ANDROID_ID = " + androidId + "\n");
+
 	}
 
 	@Override
