@@ -1,2 +1,6 @@
 .metadata
 p2pTest/bin
+p2pTest/.settings
+p2pTest/.classpath
+p2pTest/.project
+p2pTest/.metadata
