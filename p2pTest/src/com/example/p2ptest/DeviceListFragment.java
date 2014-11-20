@@ -1,10 +1,9 @@
 package com.example.p2ptest;
 
-public class DeviceDetailFragment {
+public class DeviceListFragment {
 
-	public void resetViews() {
+	public void clearPeers() {
 		// TODO Auto-generated method stub
 		
 	}
-
 }

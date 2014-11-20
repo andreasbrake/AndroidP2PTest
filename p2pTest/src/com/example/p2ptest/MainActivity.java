@@ -26,148 +26,113 @@ import android.widget.Button;
 import android.widget.TextView;
 import android.widget.Toast;
 
-public class MainActivity extends Activity implements ChannelListener{
-	
+/**
+ * Activity that uses WiFI Direct APIs to discover and connect with available devices.
+ *
+ */
+public class MainActivity extends Activity implements ChannelListener {
+
 	public static final String TAG = "P2P";
 	private TextView status;
-	
-	WifiP2pManager mManager;
-	Channel mChannel;
-	BroadcastReceiver mReceiver;
-	
+	private boolean isWifiP2pEnabled = false;
+	private boolean retryChannel = false;
+
+	private WifiP2pManager mManager;
+	private Channel mChannel;
+	private BroadcastReceiver mReceiver;
+
 	WifiP2pConfig config;
-	
+
 	private List<WifiP2pDevice> peers = new ArrayList<WifiP2pDevice>();
-	
 	private final IntentFilter mIntentFilter = new IntentFilter();
+
+	public void setIsWifiP2pEnabled(boolean isWifiP2pEnabled) {
+		this.isWifiP2pEnabled = isWifiP2pEnabled;
+	}
 	
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
-		 super.onCreate(savedInstanceState);
-	        setContentView(R.layout.activity_main);
-	        
-	        status = (TextView) findViewById(R.id.lbl_status);
-	    
-	        String androidId = Secure.getString(this.getContentResolver(), Secure.ANDROID_ID);
-	        status.setText(status.getText() + "ANDROID_ID = " + androidId + "\n");
-	        
-	        // indicates a change in the wifi p2p status
-	        mIntentFilter.addAction(WifiP2pManager.WIFI_P2P_STATE_CHANGED_ACTION);
-	        
-	        // indicates a change in the list of available peers
-	        mIntentFilter.addAction(WifiP2pManager.WIFI_P2P_PEERS_CHANGED_ACTION);
-	        
-	        // indicates the state of wifi p2p connectivity has changed
-	        mIntentFilter.addAction(WifiP2pManager.WIFI_P2P_CONNECTION_CHANGED_ACTION);
-	        
-	        // indicates this device's details have changed
-	        mIntentFilter.addAction(WifiP2pManager.WIFI_P2P_THIS_DEVICE_CHANGED_ACTION);
-	        
-	        final Button button = (Button) findViewById(R.id.btn_listen);
-	         
-	        mManager = (WifiP2pManager) getSystemService(Context.WIFI_P2P_SERVICE);
-	        mChannel = mManager.initialize(this, getMainLooper(), null);
-	        mReceiver = new WiFiDirectBroadcastReceiver(mManager, mChannel, this);
-	        
-			button.setOnClickListener(new View.OnClickListener() {
-				public void onClick(View v) {
-					
-					mManager.discoverPeers(mChannel, new WifiP2pManager.ActionListener() {
-					    @Override
-					    public void onSuccess() {
-					    	 status.setText(status.getText() + "success\n");
-					    }
+		super.onCreate(savedInstanceState);
+		setContentView(R.layout.activity_main);
 
-					    @Override
-					    public void onFailure(int reasonCode) {
-					    	 status.setText(status.getText() + "failure\n");
-					    }
-					});
-			    }
-			});
+		status = (TextView) findViewById(R.id.lbl_status);
 
-	}
-	
-	protected void connectToDevice(WifiP2pDevice device) {
-		WifiP2pConfig config = new WifiP2pConfig();
-		config.deviceAddress = device.deviceAddress;
-		mManager.connect(mChannel, config, new ActionListener() {
-			
-			@Override
-			public void onSuccess() {
-				// success logic
-			}
-			
-			@Override
-			public void onFailure(int reason) {
-				// failure logic
+		String androidId = Secure.getString(this.getContentResolver(), Secure.ANDROID_ID);
+		status.setText(status.getText() + "ANDROID_ID = " + androidId + "\n");
+
+		// indicates a change in the wifi p2p status
+		mIntentFilter.addAction(WifiP2pManager.WIFI_P2P_STATE_CHANGED_ACTION);
+
+		// indicates a change in the list of available peers
+		mIntentFilter.addAction(WifiP2pManager.WIFI_P2P_PEERS_CHANGED_ACTION);
+
+		// indicates the state of wifi p2p connectivity has changed
+		mIntentFilter.addAction(WifiP2pManager.WIFI_P2P_CONNECTION_CHANGED_ACTION);
+
+		// indicates this device's details have changed
+		mIntentFilter.addAction(WifiP2pManager.WIFI_P2P_THIS_DEVICE_CHANGED_ACTION);
+
+		mManager = (WifiP2pManager) getSystemService(Context.WIFI_P2P_SERVICE);
+		mChannel = mManager.initialize(this, getMainLooper(), null);
+		mReceiver = new WiFiDirectBroadcastReceiver(mManager, mChannel, this);
+
+		final Button button = (Button) findViewById(R.id.btn_listen);
+		button.setOnClickListener(new View.OnClickListener() {
+			public void onClick(View v) {
+
+				mManager.discoverPeers(mChannel, new WifiP2pManager.ActionListener() {
+					@Override
+					public void onSuccess() {
+						status.setText(status.getText() + "success\n");
+					}
+
+					@Override
+					public void onFailure(int reasonCode) {
+						status.setText(status.getText() + "failure\n");
+					}
+				});
 			}
 		});
+
 	}
-	
+
 	/**
-	 *  register the broadcast receiver with the intent values to be matched 
+	 * register the broadcast receiver with the intent values to be matched
 	 */
 	@Override
 	protected void onResume() {
-	    super.onResume();
-	    mReceiver = new WiFiDirectBroadcastReceiver(mManager, mChannel, this);
-	    registerReceiver(mReceiver, mIntentFilter);
+		super.onResume();
+		mReceiver = new WiFiDirectBroadcastReceiver(mManager, mChannel, this);
+		registerReceiver(mReceiver, mIntentFilter);
 	}
-	
+
 	/**
-	 *  unregister the broadcast receiver 
+	 * unregister the broadcast receiver
 	 */
 	@Override
 	protected void onPause() {
-	    super.onPause();
-	    unregisterReceiver(mReceiver);
+		super.onPause();
+		unregisterReceiver(mReceiver);
 	}
 	
-	@Override
-	public boolean onCreateOptionsMenu(Menu menu) {
-		// Inflate the menu; this adds items to the action bar if it is present.
-		getMenuInflater().inflate(R.menu.main, menu);
-		return true;
-	}
+	 /**
+     * Remove all peers and clear all fields. This is called on
+     * BroadcastReceiver receiving a state change event.
+     */
+    public void resetData() {
+        DeviceListFragment fragmentList = (DeviceListFragment) getFragmentManager()
+                .findFragmentById(R.id.frag_list);
+        DeviceDetailFragment fragmentDetails = (DeviceDetailFragment) getFragmentManager()
+                .findFragmentById(R.id.frag_detail);
+        if (fragmentList != null) {
+            fragmentList.clearPeers();
+        }
+        if (fragmentDetails != null) {
+            fragmentDetails.resetViews();
+        }
+    }
 
-	@Override
-	public boolean onOptionsItemSelected(MenuItem item) {
-		// Handle action bar item clicks here. The action bar will
-		// automatically handle clicks on the Home/Up button, so long
-		// as you specify a parent activity in AndroidManifest.xml.
-		int id = item.getItemId();
-		if (id == R.id.action_settings) {
-			return true;
-		}
-		return super.onOptionsItemSelected(item);
-	}
-	
-	@Override
-	public void connect(WifiP2pConfig config) {
-		// Picking the first device found on the network.
-		WifiP2pDevice device = peers.get(0);
-
-		config.deviceAddress = device.deviceAddress;
-		config.wps.setup = WpsInfo.PBC;
-
-		mManager.connect(mChannel, config, new ActionListener() {
-
-			@Override
-			public void onSuccess() {
-				// WiFiDirectBroadcastReceiver will notify us. Ignore for now.
-			}
-
-			@Override
-			public void onFailure(int reason) {
-				Toast.makeText(mActivity,
-						"Connect failed. Retry.", Toast.LENGTH_SHORT).show();
-			}
-		});
-	}
-	
-	private PeerListListener peerListListener = new PeerListListener() {
-
+    private PeerListListener peerListListener = new PeerListListener() {
 		@Override
 		public void onPeersAvailable(WifiP2pDeviceList peerList) {
 
@@ -186,5 +151,54 @@ public class MainActivity extends Activity implements ChannelListener{
 			}
 		}
 	};
+
+	@Override
+	public boolean onCreateOptionsMenu(Menu menu) {
+		// Inflate the menu; this adds items to the action bar if it is present.
+		getMenuInflater().inflate(R.menu.main, menu);
+		return true;
+	}
+
+	// TODO this method can be enhanced
+	@Override
+	public boolean onOptionsItemSelected(MenuItem item) {
+		// Handle action bar item clicks here. The action bar will
+		// automatically handle clicks on the Home/Up button, so long
+		// as you specify a parent activity in AndroidManifest.xml.
+		int id = item.getItemId();
+		if (id == R.id.action_settings) {
+			return true;
+		}
+		return super.onOptionsItemSelected(item);
+	}
+
 	
+	// TODO add disconnect method
+	public void connect(WifiP2pConfig config) {
+		// Picking the first device found on the network.
+		WifiP2pDevice device = peers.get(0);
+
+		config.deviceAddress = device.deviceAddress;
+		config.wps.setup = WpsInfo.PBC;
+
+		mManager.connect(mChannel, config, new ActionListener() {
+
+			@Override
+			public void onSuccess() {
+				// WiFiDirectBroadcastReceiver will notify us. Ignore for now.
+			}
+
+			@Override
+			public void onFailure(int reason) {
+				Toast.makeText(MainActivity.this, "Connect failed. Retry.", Toast.LENGTH_SHORT).show();
+			}
+		});
+	}
+
+	@Override
+	public void onChannelDisconnected() {
+		// TODO Auto-generated method stub
+		
+	}
+
 }
